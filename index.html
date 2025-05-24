@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SkinScan Web</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.13.0/dist/tf.min.js"></script>
+</head>
+<body>
+  <h1>Skin Condition Prediction</h1>
+  <input type="file" id="imageUpload" accept="image/*" />
+  <p id="status">Loading model...</p>
+  <p><strong>Prediction:</strong> <span id="prediction">N/A</span></p>
+
+  <script>
+    const MODEL_URL = './model.json';
+    let model;
+
+    async function loadModel() {
+      model = await tf.loadLayersModel(MODEL_URL);
+      document.getElementById('status').innerText = 'Model loaded. Upload an image.';
+    }
+
+    async function preprocessImage(img) {
+      const tensor = tf.browser
+        .fromPixels(img)
+        .resizeNearestNeighbor([224, 224])
+        .toFloat()
+        .div(tf.scalar(255.0))
+        .expandDims();
+      return tensor;
+    }
+
+    async function predict(file) {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = async function () {
+        img.src = reader.result;
+        img.onload = async function () {
+          const input = await preprocessImage(img);
+          const prediction = model.predict(input);
+          const result = prediction.argMax(-1).dataSync()[0];
+          document.getElementById('prediction').innerText = result;
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('imageUpload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) predict(file);
+    });
+
+    loadModel();
+  </script>
+</body>
+</html>
